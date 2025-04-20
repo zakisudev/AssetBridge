@@ -1,132 +1,141 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Book, Review } from '../types';
 import { bookAPI, reviewAPI } from '../api';
+import { Book, Review } from '../types';
 import ReviewForm from './ReviewForm';
-import ReviewItem from './ReviewItem';
 
-const BookDetail = () => {
+const BookDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
+
+  const fetchData = async () => {
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      const bookId = parseInt(id);
+      const bookData = await bookAPI.getBookById(bookId);
+      setBook(bookData);
+
+      const reviewsData = await reviewAPI.getReviews(bookId);
+      setReviews(reviewsData);
+
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching book details:', err);
+      setError('Failed to load book details. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBookAndReviews = async () => {
-      if (!id) return;
-
-      try {
-        setLoading(true);
-        const bookId = parseInt(id);
-
-        // Fetch book and reviews in parallel
-        const [bookData, reviewsData] = await Promise.all([
-          bookAPI.getBookById(bookId),
-          reviewAPI.getReviews(bookId),
-        ]);
-
-        setBook(bookData);
-        setReviews(reviewsData);
-        setError(null);
-      } catch (err) {
-        setError('Failed to load book details');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookAndReviews();
+    fetchData();
   }, [id]);
 
-  const handleReviewAdded = (newReview: Review) => {
-    setReviews((prevReviews) => [newReview, ...prevReviews]);
-    setShowReviewForm(false);
+  const handleReviewAdded = async () => {
+    if (id) {
+      // Refresh reviews after adding a new one
+      try {
+        const reviewsData = await reviewAPI.getReviews(parseInt(id));
+        setReviews(reviewsData);
+      } catch (err) {
+        console.error('Error refreshing reviews:', err);
+      }
+    }
   };
 
-  const handleReviewUpdated = (updatedReview: Review) => {
-    setReviews((prevReviews) =>
-      prevReviews.map((review) =>
-        review.id === updatedReview.id ? updatedReview : review
-      )
-    );
-  };
-
-  const handleReviewDeleted = (reviewId: number) => {
-    setReviews((prevReviews) =>
-      prevReviews.filter((review) => review.id !== reviewId)
-    );
-  };
-
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex justify-center p-8">Loading book details...</div>
+      <div className="container mx-auto p-4 text-center">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mx-auto mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto mb-2"></div>
+        </div>
+      </div>
     );
-  if (error) return <div className="text-red-500 p-8">{error}</div>;
-  if (!book) return <div className="p-8">Book not found</div>;
+  }
+
+  if (error || !book || !id) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="bg-red-100 text-red-700 p-4 rounded mb-4">
+          {error || 'Book not found'}
+        </div>
+        <Link to="/" className="text-blue-600 hover:underline">
+          ← Back to Books
+        </Link>
+      </div>
+    );
+  }
+
+  const bookId = parseInt(id);
 
   return (
     <div className="container mx-auto p-4">
-      <Link to="/" className="inline-block mb-4 text-blue-600 hover:underline">
-        &larr; Back to Book List
+      <Link to="/" className="text-blue-600 hover:underline mb-4 inline-block">
+        ← Back to Books
       </Link>
 
-      <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{book.title}</h1>
-            <p className="text-xl mb-1">by {book.author}</p>
-            <p className="text-gray-600 mb-4">
-              {book.genre} • {book.published_year}
-            </p>
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 className="text-3xl font-bold mb-2">{book.title}</h1>
+
+        <div className="flex items-center mb-4">
+          <div className="flex items-center">
+            <span className="text-yellow-500 mr-1">★</span>
+            <span>{book.avg_rating.toFixed(1)}</span>
           </div>
-          <div className="bg-blue-100 p-2 rounded flex items-center">
-            <span className="text-2xl text-yellow-500 mr-1">★</span>
-            <span className="text-xl font-bold">{book.avg_rating}</span>
-            <span className="text-gray-600 ml-1">/ 5</span>
-          </div>
+          <span className="mx-2">•</span>
+          <span>{reviews.length} reviews</span>
+        </div>
+
+        <div className="mb-4">
+          <span className="font-semibold">Author:</span> {book.author}
+        </div>
+        <div className="mb-4">
+          <span className="font-semibold">Genre:</span> {book.genre}
+        </div>
+        <div className="mb-4">
+          <span className="font-semibold">Year:</span> {book.published_year}
         </div>
       </div>
 
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Reviews ({reviews.length})</h2>
-          <button
-            onClick={() => setShowReviewForm(!showReviewForm)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            {showReviewForm ? 'Cancel' : 'Add Review'}
-          </button>
+      <h2 className="text-2xl font-bold mb-4">Reviews</h2>
+
+      <ReviewForm bookId={bookId} onReviewAdded={handleReviewAdded} />
+
+      {reviews.length === 0 ? (
+        <div className="bg-gray-100 p-4 rounded text-center mt-6">
+          No reviews yet. Be the first to review this book!
         </div>
-
-        {showReviewForm && (
-          <div className="bg-gray-100 p-4 rounded mb-6">
-            <ReviewForm
-              bookId={parseInt(id as string)}
-              onReviewAdded={handleReviewAdded}
-            />
-          </div>
-        )}
-
-        {reviews.length > 0 ? (
-          <div className="space-y-4">
-            {reviews.map((review) => (
-              <ReviewItem
-                key={review.id}
-                review={review}
-                onReviewUpdated={handleReviewUpdated}
-                onReviewDeleted={handleReviewDeleted}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 italic">
-            No reviews yet. Be the first to review!
-          </p>
-        )}
-      </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          {reviews.map((review) => (
+            <div
+              key={review.id}
+              className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <div className="font-semibold">{review.user_name}</div>
+                  <div className="text-sm text-gray-500">
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex items-center bg-blue-50 px-2 py-1 rounded">
+                  <span className="text-yellow-500 mr-1">★</span>
+                  <span>{review.rating}/5</span>
+                </div>
+              </div>
+              <p className="text-gray-700">{review.comment}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
