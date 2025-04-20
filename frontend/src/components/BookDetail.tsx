@@ -10,13 +10,13 @@ const BookDetail: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const bookId = parseInt(id);
 
   const fetchData = async () => {
     if (!id) return;
 
     try {
       setLoading(true);
-      const bookId = parseInt(id);
       const bookData = await bookAPI.getBookById(bookId);
       setBook(bookData);
 
@@ -72,8 +72,6 @@ const BookDetail: React.FC = () => {
       </div>
     );
   }
-
-  const bookId = parseInt(id);
 
   return (
     <div className="container mx-auto p-4">
