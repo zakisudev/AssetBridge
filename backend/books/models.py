@@ -1,5 +1,5 @@
 from django.db import models
-from typing import Any
+from django.db.models import Avg
 
 
 class Book(models.Model):
@@ -10,8 +10,12 @@ class Book(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.title
+
+    @property
+    def avg_rating(self):
+        return self.reviews.aggregate(Avg("rating"))["rating__avg"] or 0
 
     class Meta:
         ordering = ["-created_at"]
