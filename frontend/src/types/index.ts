@@ -34,17 +34,16 @@ export interface RegisterData {
 export interface Review {
   id: number;
   book: number;
-  user: number;
-  username: string;
+  user_name: string;
   rating: number;
   comment: string;
   created_at: string;
   updated_at: string;
-  is_owner: boolean;
 }
 
 export interface ReviewFormData {
   book: number;
+  user_name: string;
   rating: number;
   comment: string;
 }
